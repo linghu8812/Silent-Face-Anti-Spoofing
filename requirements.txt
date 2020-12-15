@@ -6,3 +6,5 @@ torch==1.2.0
 opencv_python==4.2.0.34
 Pillow==7.1.2
 tensorboardX==2.0
+onnx >= 1.6.0
+insightface
