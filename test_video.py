@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='face anti spoofing proto code')
     parser.add_argument('video', help='video file name.')
     parser.add_argument('--gpu', default=0, type=int, help='gpu id.')
+    parser.add_argument('--rotate', action='store_true', help='rotate frame.')
     args = parser.parse_args()
 
     # RetinaFace Detector
@@ -47,14 +48,17 @@ if __name__ == '__main__':
     height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
     fourcc = 'MJPG'
+    size = (height, width) if args.rotate else (width, height)
     video_writer = cv2.VideoWriter(args.video.replace('mp4', 'avi').replace('mov', 'avi'),
-                                   cv2.VideoWriter_fourcc(*fourcc), fps, (width, height))
+                                   cv2.VideoWriter_fourcc(*fourcc), fps, size)
     while True:
         success, frame = video_capture.read()
         if not success:
             video_capture.release()
             video_writer.release()
             break
+        if args.rotate:
+            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
         bboxes, _ = detector.detect(frame, threshold=0.8)
         for bbox in bboxes:
             left, top, right, bottom, _ = bbox.astype(np.int32)
@@ -70,13 +74,13 @@ if __name__ == '__main__':
             }
             if scale is None:
                 param["crop"] = False
-            img = image_cropper.crop(**param)
-            # plt.imshow(img)
+            roi = image_cropper.crop(**param)
+            # plt.imshow(roi)
             # plt.show()
-            prediction = model_test.predict(img, './resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth')
-            label = np.argmax(prediction)
-            value = prediction[0][label]
-            if label == 1:
+            prediction = model_test.predict(roi, './resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth')
+            result = np.argmax(prediction)
+            value = prediction[0][result]
+            if result == 1:
                 plot_one_box(bbox, frame, (0, 255, 0), f'real{value:.2f}')
             else:
                 plot_one_box(bbox, frame, (0, 0, 255), f'fake{value:.2f}')
